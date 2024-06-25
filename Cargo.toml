@@ -1,0 +1,7 @@
+[workspace]
+resolver ="2"
+
+members = [
+    "web_server",
+    "command_handler",
+]

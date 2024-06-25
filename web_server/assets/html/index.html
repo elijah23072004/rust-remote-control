@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>"home"</title>
+        <link rel="stylesheet" href="assets/css/style.css">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    </head>
+    <body onload="initialise()">
+        <div id="volume">
+            <p id="currentVolume"></p>
+            <p> % volume</p>
+            <button onclick="getCurrentVolume()">Get current volume </button>
+            <button onclick="offsetVolume(-5)"> -5% Volume </button>
+            <button onclick="offsetVolume(5)"> +5% Volume </button>
+            <p> Volume</p>
+            <input type="range" min="0" max="100" value="50" class="slider" id="volumeSlider" oninput="setVolume()">
+            <p id="volumeValue"></p>
+            <button onclick="volumeSubmit()"> Submit volume change </button> 
+            <br><br>
+            <button onclick="toggleScreen()"> Toggle laptop screen </button>
+            <button onclick="setBrightness(0)">Set laptop brightness to 0%</button>
+            <button onclick="setBrightness(50)">Set laptop brightness to 50%</button>
+            <button onclick="setBrightness(100)">Set laptop brightness to 100</button>
+            <br><br><br>
+            <select id="player">
+                <option value="">--Please choose a player--</option>
+            </select>
+            <button onclick="previousPlayer()"> Previous</button>
+            <button onclick="playPause()"> Play Pause </button>
+            <button onclick="nextPlayer()"> Next </button>
+            <button onclick="getPlayers()"> Refresh players </button>
+            <button onclick="getPlayingMediaTitle()"> Get currently playing media</button>
+            <button onclick="toggle_shuffle()">Toggle shuffle</button>
+                
+            <p> Curreny playing media:
+            <p id="playingMedia"></p>
+        </div>
+    <script>
+        function sendData(data, successFunc= () => {})
+    {
+        $.ajax({
+            type: "POST",
+            url:"/sendCommand/",
+            data: data,
+            success: function(data){
+                console.log(data)
+                successFunc(data)
+            },
+            failure: function(){
+                console.log("Failed to send data")
+            }
+        });
+    }
+
+    function toggleScreen()
+    {
+        sendData("action,toggleScreen")
+    }
+    function setBrightness(num)
+    {
+        sendData("action,setBrightness,"+num);
+    }
+    function volumeSubmit()
+    {
+        let volumeSlider = document.getElementById("volumeSlider");
+        let value = volumeSlider.value;
+        let data = "action,setVolume,"+value;
+        sendData(data, getCurrentVolume);
+    }
+    function setVolume()
+    {
+        document.getElementById("volumeValue").textContent=document.getElementById("volumeSlider").value;
+    }
+    function getCurrentVolume()
+    {
+        sendData("action, getVolume", (val) => document.getElementById("currentVolume").textContent=val);
+    }
+    function offsetVolume(offset)
+    {
+        let value =  document.getElementById("currentVolume").textContent;
+        let newVal = Number(value) + offset;
+        let data ="action,setVolume,"+newVal;
+        document.getElementById("volumeSlider").value=newVal;
+        document.getElementById("volumeValue").textContent=newVal;
+        sendData(data,getCurrentVolume);
+    }
+    function initialise()
+    {
+        getCurrentVolume()
+        setVolume()
+        getPlayers()
+    }
+    
+    function previousPlayer()
+    {
+        let player = document.getElementById("player").value;
+        if (player=="") return;
+        sendData("action,previousMediaPlayer,"+player);
+    }
+    function nextPlayer()
+    {
+        let player = document.getElementById("player").value;
+        if (player=="") return;
+        sendData("action,nextMediaPlayer,"+player);
+    }
+    function playPause()
+    {
+        let player = document.getElementById("player").value;
+        if (player=="") return;
+        sendData("action,playPauseMediaPlayer,"+ player);
+    }
+    function getPlayersDropDown(players)
+    {
+        players = players.trim();
+        let player_select = document.getElementById("player");
+        player_select.innerHTML="";
+        option_placeholder = document.createElement("option");
+        option_placeholder.setAttribute("value","");
+        option_placeholder.innerHTML="-- Please choose a player--";
+        player_select.appendChild(option_placeholder);
+        players.split("\n").forEach(function (player) {
+            let option = document.createElement("option");
+            option.setAttribute("value",player);
+            option.innerHTML = player;
+            player_select.appendChild(option);
+        });
+    }
+    function getPlayers()
+    {
+        sendData("action,getPlayers",getPlayersDropDown);
+    }
+    function getPlayingMediaTitle()
+    {
+        let player=document.getElementById("player").value;
+        if(player=="") return;
+            sendData("action, getPlayingMedia,"+player,(response) => document.getElementById("playingMedia").innerText=response);
+    }
+    function toggle_shuffle()
+    {
+        let player = document.getElementById("player").value;
+        if (player =="") return;
+        sendData("action,toggleShuffle,"+player);
+    }
+    </script>
+    </body>
+</html>
