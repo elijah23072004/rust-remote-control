@@ -1,0 +1,12 @@
+/home/eli/Coding/projects/remote_control/target/debug/deps/libgeneric_array-2f82c402e54db0a9.rmeta: /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/lib.rs /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/hex.rs /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/impls.rs /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/iter.rs /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/arr.rs /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/functional.rs /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/sequence.rs /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/internal.rs
+
+/home/eli/Coding/projects/remote_control/target/debug/deps/generic_array-2f82c402e54db0a9.d: /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/lib.rs /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/hex.rs /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/impls.rs /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/iter.rs /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/arr.rs /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/functional.rs /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/sequence.rs /home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/internal.rs
+
+/home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/lib.rs:
+/home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/hex.rs:
+/home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/impls.rs:
+/home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/iter.rs:
+/home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/arr.rs:
+/home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/functional.rs:
+/home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/sequence.rs:
+/home/eli/.cargo/registry/src/index.crates.io-6f17d22bba15001f/generic-array-1.0.0/src/internal.rs:

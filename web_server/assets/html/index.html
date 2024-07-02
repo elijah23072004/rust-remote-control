@@ -5,6 +5,7 @@
         <title>"home"</title>
         <link rel="stylesheet" href="assets/css/style.css">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+        <script type="text/javascript" src="assets/js/crypto.js"></script>
     </head>
     <body onload="initialise()">
         <div id="volume">
@@ -37,6 +38,9 @@
             <p id="playingMedia"></p>
         </div>
     <script>
+
+        let encryption_key;
+        let identifier;
         function sendData(data, successFunc= () => {})
     {
         $.ajax({
@@ -52,7 +56,7 @@
             }
         });
     }
-
+    
     function toggleScreen()
     {
         sendData("action,toggleScreen")
@@ -85,8 +89,9 @@
         document.getElementById("volumeValue").textContent=newVal;
         sendData(data,getCurrentVolume);
     }
-    function initialise()
+    async function initialise()
     {
+        await initialiseEncryption();
         getCurrentVolume()
         setVolume()
         getPlayers()
@@ -141,6 +146,89 @@
         let player = document.getElementById("player").value;
         if (player =="") return;
         sendData("action,toggleShuffle,"+player);
+    }
+    async function initialiseEncryption()
+    {
+        let password = window.prompt("Enter your password");
+        let nonce= window.crypto.getRandomValues(new Uint8Array(16));
+        //console.log("unencrypted data is:");
+        //console.log(nonce);
+        let key = await generateKey(password);
+        let ciphertext = await encrypt(nonce,key);
+        let cipherBuffer = new Uint8Array(ciphertext,0,ciphertext.byteLength)
+        let bufferLen = ciphertext.byteLength + saltLen + ivLen; 
+        let buffer = new Uint8Array(bufferLen);
+        buffer.set(salt);
+        buffer.set(iv,saltLen);
+        buffer.set(cipherBuffer,(saltLen+ivLen));
+        
+        console.log(buffer);
+        
+        const req = new XMLHttpRequest();
+        req.open ("POST", "/initialiseConnection/", true);
+        req.responseType = "blob";
+        req.onload = async function() {
+                if (this.status === 200) {
+                    console.log("making blob");
+                    var blob = new Blob([req.response]);
+                    handleResponse(blob,key,nonce);
+                } 
+                else {
+                    console.log("failed to initialse connection");
+                    console.log(this.status);
+                    window.location.reload();
+                }
+        }
+        req.send(buffer)
+        
+    }
+    //takes arrayBuffer containing iv then ciphertext
+    async function handleResponse(blob,key,oldNonce)
+    {
+            let data;
+            var fileReader = new FileReader();
+            fileReader.onload = async function(event) {
+                arrayBuffer = event.target.result;
+                data = new Uint8Array(arrayBuffer);
+
+                iv = data.slice(0,12);
+                console.log("iv:");
+                console.log(iv);
+                cipher = data.slice(12);
+                console.log("ciphertext:");
+                console.log(cipher);
+                //key = await getKey(getKeyMaterial("password"), salt);
+                let plaintext = await decrypt(cipher, key);
+                if (plaintext == null) {
+                    alert("invalid decryption");
+                    window.location.reload();
+                    return;
+                }
+                //plaintext is array buffer of 32 bytes with first 16 being old nonce need to check if old nonce is still valid 
+                let originalNonce = plaintext.slice(0,16);
+                //cehck if old nonce is same as one send
+                if (isEqual(originalNonce,oldNonce)) {
+                    encryption_key = plaintext.slice(16);
+                    identifier=originalNonce;
+                    console.log("successful encryption initialisation") 
+                    //here the callback for the rest of the initialisation will be done
+                    return;
+                }
+                else {
+                    alert("returned nonce is not the same as the one generated");
+                    window.location.reload();
+                }
+            };
+            fileReader.readAsArrayBuffer(blob);
+    }
+    function isEqual(array1, array2)
+    {
+        if(array1.length != array2.length) {return false}
+        for (let i=0; i<array1.length; i++)
+        {
+            if(array1[i]!=array2[i]){return false}
+        }
+        return true;
     }
     </script>
     </body>
