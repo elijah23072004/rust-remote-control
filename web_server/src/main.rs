@@ -8,8 +8,8 @@ use axum::{
     extract::State};
 
 use command_handler::*;
-use web_server::{initialise_connection,print_vec};
-
+use web_server::*;
+use std::str;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::fs;
@@ -22,14 +22,19 @@ struct AppState {
     //password: Arc<Mutex<String>>,
     password:String,
 }
-
+struct DecodedData{
+    identifier: [u8;16],
+    iv : [u8;12],
+    salt: [u8;16],
+    data: Vec<u8>,
+}
 
 #[tokio::main]
 async fn main() {
     let password = get_password(&String::from("config.config"));
     let state = AppState{key_pairs : Arc::new(Mutex::new(HashMap::new())), password};
     let app = Router::new()
-    .route_service("/sendCommand/", post(handle_command))
+    .route("/sendCommand/", post(handle_command)).with_state(state.clone())
     .route_service("/",ServeFile::new("web_server/assets/html/index.html"))
     .nest_service("/assets", ServeDir::new("web_server/assets").fallback(ServeFile::new("web_server/assets/html/not_found.html")))
     .route("/initialiseConnection/", post(handle_initialise)).with_state(state)
@@ -38,10 +43,39 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
-async fn handle_command(body: String) -> impl IntoResponse{
-    println!("post request made body: {body}"); 
+async fn handle_command(state: State<AppState>, body:Bytes) -> impl IntoResponse{
+    
+    let decoded_data = match decode_data(body.to_vec()) {
+        Some( data) => data,
+        None  => {
+            println!("invalid data sent");
+            return (StatusCode::OK, "invalid data format".to_string());
+        }
+    };
+
+    let key_val = {
+        let keys = state.key_pairs.lock().expect("mutex was poisoned");
+        match keys.get(&decoded_data.identifier) {
+            Some(val) => {
+                println!("encryption key from hash map:");
+                print_vec(&val.to_vec());
+                val.clone()
+            },
+            None => return (StatusCode::OK,"invalid identifier".to_string()), 
+        }
+    };
+    
+
+    let plaintext = match decrypt_message(decoded_data.data, &decoded_data.iv, &decoded_data.salt, &key_val, &state.password.clone()){
+        Some(plaintext) => plaintext,
+        None => { println!("could not decrypt message"); return (StatusCode::OK, "could not decrypt message".to_string());}
+    };
+    let command = str::from_utf8(&plaintext).unwrap();  
+    println!("post request made body:");
+    print_vec(&body.to_vec());
+    //println!("post request made body: {body}"); 
     //handle_request(body);
-    (StatusCode::OK, handle_request(body))
+    (StatusCode::OK, handle_request(command.to_string()))
 }
 
 async fn handler_404(uri: Uri) -> impl IntoResponse {
@@ -90,4 +124,17 @@ fn make_new_password(path: &String) -> String
     println!("password is ({password})");
     return password;
 
+}
+
+fn decode_data(data : Vec<u8>) -> Option<DecodedData>
+{
+    //salt iv and identifer combined use 46 bytes of space so if less than 47 bytes then cannot be
+    //valid data 
+    if data.len() < 47 {return None}
+    let identifier : [u8;16]= data[0..16].try_into().unwrap();
+    let iv :[u8;12]= data[16..28].try_into().unwrap();
+    let salt: [u8;16]=data[28..44].try_into().unwrap();
+    let cipher_text = &data[44..];
+
+   return Some(DecodedData{iv,salt,identifier,data:cipher_text.to_vec()});
 }

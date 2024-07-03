@@ -6,11 +6,11 @@ use aes_gcm::{
 };
 use pbkdf2::{
     pbkdf2,
-    hmac::Hmac};
+    hmac::Hmac,
+    pbkdf2_hmac_array};
 use sha2::Sha256;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-
 
 pub fn decrypt(data:Vec<u8>, key: Key<Aes256Gcm>, nonce: Vec<u8>) -> Result<Vec<u8>,aes_gcm::Error> { 
     let cipher = Aes256Gcm::new(&key);
@@ -30,19 +30,26 @@ fn get_encryption_key(password: &String, salt :&Vec<u8>) ->  Key<Aes256Gcm>
     pbkdf2::<Hmac<Sha256>>(&password.clone().into_bytes(), &salt,100_000, &mut buf).expect("HMAC can be initialized with any key length");
     return buf.into();
 }
+fn make_encryption_key(arr: &Vec<u8>, salt:&Vec<u8>) -> Key<Aes256Gcm>
+{
+    //let mut buf = [0u8; 32];
+    //pbkdf2::<Hmac<Sha256>>(&arr, &salt,100_000, &mut buf).expect("HMAC can be initialized with any key length");
+    let buf  =pbkdf2_hmac_array::<Sha256, 32>(&arr[..],salt,100_000);
+    return buf.into();
+}
 pub fn initialise_connection(data:Vec<u8>, key_pairs: & Arc<Mutex<HashMap<[u8;16],[u8;16]>>>, password: &String) -> Option<(Vec<u8>,Vec<u8>)>
 {
-    print_vec(&data);
+    //print_vec(&data);
     
     let salt = (&data[0..16]).to_vec();
     let iv = (&data[16..28]).to_vec();
     let cipher_text = (&data[28..]).to_vec();
-    debug_vals(&salt, &iv, &cipher_text);
+    //debug_vals(&salt, &iv, &cipher_text);
 
     //password (currently constant) and generate valid key from string 
     let key = get_encryption_key(&password, &salt);
-    println!("key:");
-    print_vec(&key.to_vec());
+    //println!("key:");
+    //print_vec(&key.to_vec());
     //decrypt message to find id number send by client 
     let old_nonce  = match decrypt(cipher_text,key,iv)
     {
@@ -51,8 +58,8 @@ pub fn initialise_connection(data:Vec<u8>, key_pairs: & Arc<Mutex<HashMap<[u8;16
             println!("{e}");
             return None}
     };
-    println!("decrypted message:");
-    print_vec(&old_nonce);
+    //println!("decrypted message:");
+    //print_vec(&old_nonce);
     
     //nonce for next message 
     
@@ -66,15 +73,15 @@ pub fn initialise_connection(data:Vec<u8>, key_pairs: & Arc<Mutex<HashMap<[u8;16
         plaintext[index]=*value;
         plaintext[index+16]=new_nonce[index];
     }
-    println!("plaintext:");
-    print_vec(&plaintext.to_vec());
+    //println!("plaintext:");
+    //print_vec(&plaintext.to_vec());
     //encrypt data with key
     let output = match encrypt(plaintext.to_vec(),key) {
         Ok(cipher) => cipher,
         Err(_) => return None
     };
-    println!("iv:");
-    print_vec(&output.0);
+    //println!("iv:");
+    //print_vec(&output.0);
 
     //store encryption ket in key pairs with the old nonce send as the identifier as that will act
     //as an id number for that connection 
@@ -112,4 +119,30 @@ pub fn print_vec(data: &Vec<u8>)
         output = output + "," + &byte.to_string();
     }
     println!("{output}");
+}
+
+pub fn decrypt_message(data: Vec<u8>, iv: &[u8;12], salt: &[u8;16], key_val: &[u8;16], password: &String) -> Option<Vec<u8>>
+{
+    println!("key value from decrypt message:");
+    print_vec(&key_val.to_vec());
+    println!("\n");
+    println!("salt:");
+    print_vec(&salt.to_vec());
+    println!("\n");
+    //println!("iv");
+    //print_vec(&iv.to_vec());
+    //println!("data");
+    //print_vec(&data);
+    //println!("\n\n");
+    
+    let key = get_encryption_key(&password.trim().to_string(), &salt.to_vec());
+    //let key = make_encryption_key(&key_val.to_vec(), &salt.to_vec());
+    println!("key:");
+    print_vec(&key.to_vec());
+    
+    println!("\n\n\n");
+    return match decrypt(data,key,iv.to_vec()){
+        Ok(plaintext) => Some(plaintext),
+        Err(_) => None,
+    }
 }

@@ -1,7 +1,5 @@
 const saltLen = 16;
 const ivLen = 12;
-let iv;
-let salt;
 function getMessageEncoding(message) {
   let enc = new TextEncoder();
   return enc.encode(message);
@@ -18,19 +16,27 @@ function getKeyMaterial(password) {
     );
 }
 
-function getKey(keyMaterial, salt) {
-    return window.crypto.subtle.deriveKey(
-      {
-        "name": "PBKDF2",
-        salt: salt, 
-        "iterations": 100000,
-        "hash": "SHA-256"
-      },
-      keyMaterial,
-      { "name": "AES-GCM", "length": 256},
-      true,
-      [ "encrypt", "decrypt" ]
+async function getKey(keyMaterial, salt) {
+    //console.log("salt from getKey:");
+    //console.log(salt);
+    let key = await window.crypto.subtle.deriveKey(
+        {
+            "name": "PBKDF2",
+            salt: salt, 
+            "iterations": 100000,
+            "hash": "SHA-256"
+        },
+        keyMaterial,
+        { "name": "AES-GCM", "length": 256},
+        true,
+        [ "encrypt", "decrypt" ]
     );
+
+    console.log("salt in getKey:");
+    console.log(salt)
+    console.log("key in get key:");
+    await exportCryptoKey(key);
+    return key;
 }
  /*
   Derive a key from a password supplied by the user, and use the key
@@ -39,14 +45,12 @@ function getKey(keyMaterial, salt) {
   the ciphertext.
   */
 
-
+//returns {iv,ciphertext}
 async function encrypt(message,key) {
 
-    //exportCryptoKey(key);
-    console.log("key:");
-    console.log(key);
-    pass=key;
-    iv = window.crypto.getRandomValues(new Uint8Array(12));
+    console.log("key in encrypt:");
+    exportCryptoKey(key);
+    let iv = window.crypto.getRandomValues(new Uint8Array(12));
     //let encoded = getMessageEncoding(message);
     //console.log("before encryption");
     //console.log(encoded);
@@ -59,9 +63,9 @@ async function encrypt(message,key) {
       message,
     );
 
-    let buffer = new Uint8Array(ciphertext, 0, 5);
-    console.log(`${buffer}...[${ciphertext.byteLength} bytes total]`);
-    return ciphertext;
+    //let buffer = new Uint8Array(ciphertext, 0, 5);
+    //console.log(`${buffer}...[${ciphertext.byteLength} bytes total]`);
+    return {iv:iv,ciphertext:ciphertext};
   }
 
   /*
@@ -72,7 +76,7 @@ async function encrypt(message,key) {
   If there was an error decrypting,
   update the "decryptedValue" box with an error message.
   */
-  async function decrypt(ciphertext,key) {
+  async function decrypt(ciphertext,key,iv) {
     try {
       let decrypted = await window.crypto.subtle.decrypt(
         {
@@ -83,8 +87,6 @@ async function encrypt(message,key) {
         ciphertext
       );
         decrypted = new Uint8Array(decrypted);
-        console.log("decrypted data is:");
-        console.log(decrypted);
         return decrypted;
     } catch (e) {
         console.log("decryption error");
@@ -94,10 +96,14 @@ async function encrypt(message,key) {
   }
   async function generateKey(password)
   {
-    salt = window.crypto.getRandomValues(new Uint8Array(16));
+    let salt = window.crypto.getRandomValues(new Uint8Array(16));
+    //console.log("salt from generateKey func:");
+    //console.log(salt);
     let keyMaterial = await getKeyMaterial(password);
     let key = await getKey(keyMaterial,salt);
-    return key;
+    //console.log("salt from end of generateKey func:");
+    //console.log(salt);
+    return {salt:salt,key:key};
   }
 
 async function exportCryptoKey(key) {
