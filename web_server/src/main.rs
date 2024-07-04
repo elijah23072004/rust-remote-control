@@ -38,14 +38,14 @@ async fn main() {
     let password = get_password(&String::from("config.conf"));
     //initialise app state
     let state = AppState{key_pairs : Arc::new(Mutex::new(HashMap::new())), password};
-    
+
     let app = Router::new()
-    .route("/sendCommand/", post(handle_command)).with_state(state.clone())
-    .route_service("/",ServeFile::new("web_server/assets/html/index.html"))
-    .nest_service("/assets", ServeDir::new("web_server/assets").fallback(ServeFile::new("web_server/assets/html/not_found.html")))
-    .route("/initialiseConnection/", post(handle_initialise)).with_state(state)
-    .fallback(handler_404);
-    
+        .route("/sendCommand/", post(handle_command)).with_state(state.clone())
+        .route_service("/",ServeFile::new("web_server/assets/html/index.html"))
+        .nest_service("/assets", ServeDir::new("web_server/assets").fallback(ServeFile::new("web_server/assets/html/not_found.html")))
+        .route("/initialiseConnection/", post(handle_initialise)).with_state(state)
+        .fallback(handler_404);
+
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
@@ -67,7 +67,7 @@ async fn handle_command(state: State<AppState>, body:Bytes) -> impl IntoResponse
             None => return Body::from("invalid request"), 
         }
     };
-    
+
     //decrypt message recieved with encryption key
     let plaintext = match decrypt_message(decoded_data.data, &decoded_data.iv, &key_val){
         Some(plaintext) => plaintext,
@@ -85,7 +85,7 @@ async fn handle_command(state: State<AppState>, body:Bytes) -> impl IntoResponse
     //generatte key to encrypt response 
     let buf :[u8;32] =key_val.into(); 
     let key:Key<Aes256Gcm>=buf.into();
-    
+
     //encrypt data using encryption key and get:
     //tuple of 2 vectors containg iv then ciphertext
     let output = match encrypt(res.into(),key) {
@@ -104,16 +104,16 @@ async fn handler_404(uri: Uri) -> impl IntoResponse {
 async fn handle_initialise(state:State<AppState>,body: Bytes)  -> impl IntoResponse {
 
     let password = state.password.clone();
-    
+
     let mut key_pairs = state.key_pairs.clone();
     let (nonce,mut cipher_text) = match initialise_connection(body.to_vec(),&mut key_pairs, &password) {
         Some(x) => x,
         None => return Body::from("invalid password") 
-   };
+    };
 
     let mut output = nonce;
     output.append(&mut cipher_text);
-     
+
     return Body::from(output); 
 }
 //reads password from file in path and if file does not exist or is empty asks user for password
@@ -156,5 +156,5 @@ fn decode_data(data : Vec<u8>) -> Option<DecodedData>
     let iv :[u8;12]= data[16..28].try_into().unwrap();
     let cipher_text = &data[28..];
 
-   return Some(DecodedData{iv,identifier,data:cipher_text.to_vec()});
+    return Some(DecodedData{iv,identifier,data:cipher_text.to_vec()});
 }

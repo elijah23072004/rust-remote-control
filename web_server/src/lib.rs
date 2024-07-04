@@ -31,7 +31,7 @@ fn get_encryption_key(password: &String, salt :&Vec<u8>) ->  Key<Aes256Gcm>
 }
 pub fn initialise_connection(data:Vec<u8>, key_pairs: & Arc<Mutex<HashMap<[u8;16],[u8;32]>>>, password: &String) -> Option<(Vec<u8>,Vec<u8>)>
 {
-    
+
     let salt = (&data[0..16]).to_vec();
     let iv = (&data[16..28]).to_vec();
     let cipher_text = (&data[28..]).to_vec();
@@ -47,8 +47,8 @@ pub fn initialise_connection(data:Vec<u8>, key_pairs: & Arc<Mutex<HashMap<[u8;16
             println!("{e}");
             return None}
     };
-    
-    
+
+
     //need to generate 32 bytes of random data to be used as new encryption key for future
     //connection
     let mut new_nonce :[u8;32] = [0;32];
@@ -75,7 +75,7 @@ pub fn initialise_connection(data:Vec<u8>, key_pairs: & Arc<Mutex<HashMap<[u8;16
         let mut data = key_pairs.lock().expect("mutex was poisoned");
         data.insert(old_nonce_array,new_nonce);
     }
-    
+
 
     //returns data structure of encryptionNonce,cipherText 
     return Some(output);
@@ -93,11 +93,11 @@ pub fn print_vec(data: &Vec<u8>)
 
 pub fn decrypt_message(data: Vec<u8>, iv: &[u8;12], key_val: &[u8;32]) -> Option<Vec<u8>>
 {
-    
+
     let buf :&[u8;32] =key_val.into(); 
     let key:&Key<Aes256Gcm>=buf.into();
 
-    
+
     return match decrypt(data,*key,iv.to_vec()){
         Ok(plaintext) => Some(plaintext),
         Err(_) => None,

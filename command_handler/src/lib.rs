@@ -104,11 +104,11 @@ fn is_string_in_range(str:String, num1:i32, num2:i32) -> bool
 fn run_command(command: String) -> Output 
 {
     let output = if cfg!(target_os = "linux") {
-    Command::new("sh")
-        .arg("-c")
-        .arg(command)
-        .output()
-        .expect("failed to execute process")
+        Command::new("sh")
+            .arg("-c")
+            .arg(command)
+            .output()
+            .expect("failed to execute process")
     } else{
         todo!("not on linux shell");
     };
