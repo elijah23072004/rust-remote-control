@@ -34,7 +34,7 @@ struct DecodedData{
 
 #[tokio::main]
 async fn main() {
-    let password = get_password(&String::from("config.config"));
+    let password = get_password(&String::from("config.conf"));
     let state = AppState{key_pairs : Arc::new(Mutex::new(HashMap::new())), password};
     let app = Router::new()
     .route("/sendCommand/", post(handle_command)).with_state(state.clone())
