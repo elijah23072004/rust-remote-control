@@ -37,7 +37,7 @@ fn make_encryption_key(arr: &Vec<u8>, salt:&Vec<u8>) -> Key<Aes256Gcm>
     let buf  =pbkdf2_hmac_array::<Sha256, 32>(&arr[..],salt,100_000);
     return buf.into();
 }
-pub fn initialise_connection(data:Vec<u8>, key_pairs: & Arc<Mutex<HashMap<[u8;16],[u8;16]>>>, password: &String) -> Option<(Vec<u8>,Vec<u8>)>
+pub fn initialise_connection(data:Vec<u8>, key_pairs: & Arc<Mutex<HashMap<[u8;16],[u8;32]>>>, password: &String) -> Option<(Vec<u8>,Vec<u8>)>
 {
     //print_vec(&data);
     
@@ -65,13 +65,14 @@ pub fn initialise_connection(data:Vec<u8>, key_pairs: & Arc<Mutex<HashMap<[u8;16
     
     //need to generate 16 bytes of random data to be used as new encryption key for future
     //connection
-    let mut new_nonce :[u8;16] = [0;16];
+    let mut new_nonce :[u8;32] = [0;32];
     OsRng.fill_bytes(&mut new_nonce);
-    let mut plaintext : [u8;32] = [0;32];
+    let mut plaintext : [u8;48] = [0;48];
     //combine old nonce and new nonce in array to be used as clear text for next message
     for (index,value) in old_nonce.iter().enumerate(){
         plaintext[index]=*value;
         plaintext[index+16]=new_nonce[index];
+        plaintext[index+32]=new_nonce[index+16];
     }
     //println!("plaintext:");
     //print_vec(&plaintext.to_vec());
@@ -121,27 +122,30 @@ pub fn print_vec(data: &Vec<u8>)
     println!("{output}");
 }
 
-pub fn decrypt_message(data: Vec<u8>, iv: &[u8;12], salt: &[u8;16], key_val: &[u8;16], password: &String) -> Option<Vec<u8>>
+pub fn decrypt_message(data: Vec<u8>, iv: &[u8;12], key_val: &[u8;32]) -> Option<Vec<u8>>
 {
     println!("key value from decrypt message:");
     print_vec(&key_val.to_vec());
     println!("\n");
     println!("salt:");
-    print_vec(&salt.to_vec());
-    println!("\n");
+    //print_vec(&salt.to_vec());
+    //println!("\n");
     //println!("iv");
     //print_vec(&iv.to_vec());
     //println!("data");
     //print_vec(&data);
     //println!("\n\n");
     
-    let key = get_encryption_key(&password.trim().to_string(), &salt.to_vec());
+    //let key = get_encryption_key(&password.trim().to_string(), &salt.to_vec());
+    let buf :&[u8;32] =key_val.into(); 
+    let key:&Key<Aes256Gcm>=buf.into();
+
     //let key = make_encryption_key(&key_val.to_vec(), &salt.to_vec());
     println!("key:");
     print_vec(&key.to_vec());
     
     println!("\n\n\n");
-    return match decrypt(data,key,iv.to_vec()){
+    return match decrypt(data,*key,iv.to_vec()){
         Ok(plaintext) => Some(plaintext),
         Err(_) => None,
     }

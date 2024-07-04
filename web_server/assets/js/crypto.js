@@ -17,8 +17,6 @@ function getKeyMaterial(password) {
 }
 
 async function getKey(keyMaterial, salt) {
-    //console.log("salt from getKey:");
-    //console.log(salt);
     let key = await window.crypto.subtle.deriveKey(
         {
             "name": "PBKDF2",
@@ -32,10 +30,6 @@ async function getKey(keyMaterial, salt) {
         [ "encrypt", "decrypt" ]
     );
 
-    console.log("salt in getKey:");
-    console.log(salt)
-    console.log("key in get key:");
-    await exportCryptoKey(key);
     return key;
 }
  /*
@@ -48,12 +42,7 @@ async function getKey(keyMaterial, salt) {
 //returns {iv,ciphertext}
 async function encrypt(message,key) {
 
-    console.log("key in encrypt:");
-    exportCryptoKey(key);
     let iv = window.crypto.getRandomValues(new Uint8Array(12));
-    //let encoded = getMessageEncoding(message);
-    //console.log("before encryption");
-    //console.log(encoded);
     let ciphertext = await window.crypto.subtle.encrypt(
       {
         name: "AES-GCM",
@@ -63,8 +52,6 @@ async function encrypt(message,key) {
       message,
     );
 
-    //let buffer = new Uint8Array(ciphertext, 0, 5);
-    //console.log(`${buffer}...[${ciphertext.byteLength} bytes total]`);
     return {iv:iv,ciphertext:ciphertext};
   }
 
@@ -97,12 +84,8 @@ async function encrypt(message,key) {
   async function generateKey(password)
   {
     let salt = window.crypto.getRandomValues(new Uint8Array(16));
-    //console.log("salt from generateKey func:");
-    //console.log(salt);
     let keyMaterial = await getKeyMaterial(password);
     let key = await getKey(keyMaterial,salt);
-    //console.log("salt from end of generateKey func:");
-    //console.log(salt);
     return {salt:salt,key:key};
   }
 

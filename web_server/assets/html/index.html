@@ -39,33 +39,24 @@
         </div>
     <script>
         let password;
-        let encryption_key;//uint8array storing number used as passwod (will need to generate key each time used)
+        let encryption_key;
         let identifier;
+        let key_val;
         //takes string and returns uin8array formatted with identifier,iv,salt and message 
         //with iv taking 12 bytes, identifier 16 and rest message
         async function getDataReadyForSending(data)
         {  
-            //console.log("salt before:");
-            //console.log(salt);
-            //let {salt,key} = await generateKey(encryption_key);
-            let {salt,key} = await generateKey(password);
 
-            //console.log("encryption key:");
-            //console.log(encryption_key);
-            //console.log("salt after:");
-            //console.log(salt);
-            //exportCryptoKey(key);  
             let enc = new TextEncoder();
                         
             let encoded_data = enc.encode(data);
-            let {iv,ciphertext} = await encrypt(encoded_data,key);             
+            let {iv,ciphertext} = await encrypt(encoded_data,encryption_key);             
             let encrypted_buffer = new Uint8Array(ciphertext,0,ciphertext.byteLength);
-            let msgSize = encrypted_buffer.length + ivLen +saltLen+identifier.length;
+            let msgSize = encrypted_buffer.length + ivLen+identifier.length;
             let output = new Uint8Array(msgSize);
             output.set(identifier);
             output.set(iv,identifier.length);
-            output.set(salt,identifier.length+ivLen);
-            output.set(encrypted_buffer,ivLen+identifier.length+saltLen);
+            output.set(encrypted_buffer,ivLen+identifier.length);
             
 
             return output; 
@@ -79,21 +70,41 @@
         }
         let binary_data =await getDataReadyForSending(data); 
         console.log(binary_data);
+        $.ajaxSetup({
+        beforeSend: function (jqXHR, settings) {
+        if (settings.dataType === 'binary')
+            settings.xhr = () => $.extend(new window.XMLHttpRequest(), {responseType:'arraybuffer'})
+        }
+        })
         $.ajax({
             type: "POST",
             url:"/sendCommand/",
             data: binary_data,
+            dataType: "binary",
             processData: false,
-            success: function(data){
-                console.log(data)
-                successFunc(data)
+            success: async function(data){
+                let plaintext = await parseResponse(data);
+                console.log(plaintext)
+                successFunc(plaintext)
             },
             failure: function(){
                 console.log("Failed to send data")
             }
         });
     }
-    
+    //takes array containing iv then ciphertext 
+    async function parseResponse(data)
+    {
+        let iv = data.slice(0,12);
+        console.log(iv);
+        let cipher = data.slice(12);
+        console.log(cipher);
+        let plain = await decrypt(cipher,encryption_key,iv);
+        console.log(plain);
+        let str = new TextDecoder().decode(plain);
+        return str;
+    }
+
     function toggleScreen()
     {
         sendData("action,toggleScreen")
@@ -190,11 +201,8 @@
     }
     async function initialiseEncryption()
     {
-        //let password;
         password = window.prompt("Enter your password");
         let nonce= window.crypto.getRandomValues(new Uint8Array(16));
-        //console.log("unencrypted data is:");
-        //console.log(nonce);
         let {salt,key} = await generateKey(password);
         let {iv,ciphertext} = await encrypt(nonce,key);
         let cipherBuffer = new Uint8Array(ciphertext,0,ciphertext.byteLength)
@@ -204,7 +212,6 @@
         buffer.set(iv,saltLen);
         buffer.set(cipherBuffer,(saltLen+ivLen));
         
-        //console.log(buffer);
         
         const req = new XMLHttpRequest();
         req.open ("POST", "/initialiseConnection/", true);
@@ -234,12 +241,7 @@
                 data = new Uint8Array(arrayBuffer);
 
                 iv = data.slice(0,12);
-                //console.log("iv:");
-                //console.log(iv);
                 cipher = data.slice(12);
-                //console.log("ciphertext:");
-                //console.log(cipher);
-                //key = await getKey(getKeyMaterial("password"), salt);
                 let plaintext = await decrypt(cipher, key,iv);
                 if (plaintext == null) {
                     alert("invalid decryption");
@@ -250,8 +252,13 @@
                 let originalNonce = plaintext.slice(0,16);
                 //cehck if old nonce is same as one send
                 if (isEqual(originalNonce,oldNonce)) {
-                    encryption_key = plaintext.slice(16);
+                    key_val= plaintext.slice(16);
                     identifier=originalNonce;
+                    
+                    encryption_key =  await window.crypto.subtle.importKey("raw", key_val.buffer, "AES-GCM", true, [
+                    "encrypt",
+                    "decrypt",
+                    ]);
                     console.log("successful encryption initialisation") 
                     //here the callback for the rest of the initialisation will be done
                     initialise();

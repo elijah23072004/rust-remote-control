@@ -5,7 +5,11 @@ use axum::{
     body::{Bytes,Body},
     response::IntoResponse,
     routing::post,
-    extract::State};
+    extract::State,
+};
+use aes_gcm::Aes256Gcm;
+use aes_gcm::Key;
+
 
 use command_handler::*;
 use web_server::*;
@@ -18,14 +22,13 @@ use std::io;
 use std::io::Write;
 #[derive(Clone)]
 struct AppState {
-    key_pairs: Arc<Mutex<HashMap<[u8;16],[u8;16]>>>,
+    key_pairs: Arc<Mutex<HashMap<[u8;16],[u8;32]>>>,
     //password: Arc<Mutex<String>>,
     password:String,
 }
 struct DecodedData{
     identifier: [u8;16],
     iv : [u8;12],
-    salt: [u8;16],
     data: Vec<u8>,
 }
 
@@ -49,7 +52,7 @@ async fn handle_command(state: State<AppState>, body:Bytes) -> impl IntoResponse
         Some( data) => data,
         None  => {
             println!("invalid data sent");
-            return (StatusCode::OK, "invalid data format".to_string());
+            return Body::from("invalid request");
         }
     };
 
@@ -61,21 +64,32 @@ async fn handle_command(state: State<AppState>, body:Bytes) -> impl IntoResponse
                 print_vec(&val.to_vec());
                 val.clone()
             },
-            None => return (StatusCode::OK,"invalid identifier".to_string()), 
+            None => return Body::from("invalid request"), 
         }
     };
     
 
-    let plaintext = match decrypt_message(decoded_data.data, &decoded_data.iv, &decoded_data.salt, &key_val, &state.password.clone()){
+    let plaintext = match decrypt_message(decoded_data.data, &decoded_data.iv, &key_val){
         Some(plaintext) => plaintext,
-        None => { println!("could not decrypt message"); return (StatusCode::OK, "could not decrypt message".to_string());}
+        None => { println!("could not decrypt message"); return Body::from("invalid request");}
     };
     let command = str::from_utf8(&plaintext).unwrap();  
     println!("post request made body:");
     print_vec(&body.to_vec());
-    //println!("post request made body: {body}"); 
-    //handle_request(body);
-    (StatusCode::OK, handle_request(command.to_string()))
+
+    let res = handle_request(command.to_string());
+
+    let buf :[u8;32] =key_val.into(); 
+    let key:Key<Aes256Gcm>=buf.into();
+    
+    //tuple of 2 vectors containg iv then ciphertext
+    let output = match encrypt(res.into(),key) {
+        Ok((mut vec1,vec2)) => {vec1.extend(vec2.iter());vec1},
+        Err(_) => panic!("failed to encrypt response"),
+    };
+    println!("output:");
+    print_vec(&output);
+    return Body::from(output)
 }
 
 async fn handler_404(uri: Uri) -> impl IntoResponse {
@@ -133,8 +147,8 @@ fn decode_data(data : Vec<u8>) -> Option<DecodedData>
     if data.len() < 47 {return None}
     let identifier : [u8;16]= data[0..16].try_into().unwrap();
     let iv :[u8;12]= data[16..28].try_into().unwrap();
-    let salt: [u8;16]=data[28..44].try_into().unwrap();
-    let cipher_text = &data[44..];
+    //let salt: [u8;16]=data[28..44].try_into().unwrap();
+    let cipher_text = &data[28..];
 
-   return Some(DecodedData{iv,salt,identifier,data:cipher_text.to_vec()});
+   return Some(DecodedData{iv,identifier,data:cipher_text.to_vec()});
 }
