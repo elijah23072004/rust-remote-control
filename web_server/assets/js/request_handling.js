@@ -76,13 +76,11 @@ async function initialiseEncryption()
     buffer.set(iv,saltLen);
     buffer.set(cipherBuffer,(saltLen+ivLen));
 
-
     const req = new XMLHttpRequest();
     req.open ("POST", "/initialiseConnection/", true);
     req.responseType = "blob";
-    req.onload = async function() {
+    req.onload = function() {
         if (this.status === 200) {
-            //console.log("making blob");
             var blob = new Blob([req.response]);
             handleResponse(blob,key,nonce,iv);
         } 
@@ -91,8 +89,8 @@ async function initialiseEncryption()
             console.log(this.status);
             window.location.reload();
         }
-    }
-    req.send(buffer)
+    };
+    req.send(buffer);
 
 }
 //takes arrayBuffer containing iv then ciphertext
@@ -119,7 +117,7 @@ async function handleResponse(blob,key,oldNonce,iv)
             key_val= plaintext.slice(16);
             identifier=originalNonce;
 
-            encryption_key =  await window.crypto.subtle.importKey("raw", key_val.buffer, "AES-GCM", true, [
+            encryption_key =  await window.crypto.subtle.importKey("raw", key_val.buffer, "AES-GCM", false, [
                 "encrypt",
                 "decrypt",
             ]);

@@ -11,7 +11,7 @@ function getKeyMaterial(password) {
         "raw", 
         enc.encode(password), 
         {name: "PBKDF2"}, 
-        true, 
+        false, 
         ["deriveBits", "deriveKey"]
     );
 }
@@ -26,7 +26,7 @@ async function getKey(keyMaterial, salt) {
         },
         keyMaterial,
         { "name": "AES-GCM", "length": 256},
-        true,
+        false,
         [ "encrypt", "decrypt" ]
     );
 
