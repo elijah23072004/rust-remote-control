@@ -10,10 +10,10 @@ Currently requires devices connecting to it to register url as use insecure as s
 
 
 Requirments:
-Rust\
-Linux operating system\
-playerctl\
-pactl\
-brightnessctl\
-bash\
-pamixer
+* Rust
+* Linux operating system
+* playerctl
+* pactl
+* brightnessctl
+* bash
+* pamixer
