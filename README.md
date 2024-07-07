@@ -1,4 +1,4 @@
-#Rust remote conrol program:
+# Rust remote conrol program:
 Allows a computer to run axum based webserver on port 3000 to allow other devices to connect via browser to control parts of computer remotely, with features being:
 * Volume control
 * Media control
