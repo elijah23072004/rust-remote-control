@@ -16,4 +16,4 @@ playerctl\
 pactl\
 brightnessctl\
 bash\
-pamixer\
+pamixer
